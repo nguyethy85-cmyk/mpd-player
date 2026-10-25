@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MPD Player - Shaka</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.13.8/shaka-player.compiled.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#141c30;--line:#2a3652;--accent:#77a7ff;--text:#edf2ff;--muted:#a8b4cc}
+*{box-sizing:border-box}body{margin:0;padding:24px 14px 40px;background:radial-gradient(ellipse at top,#172747,var(--bg) 60%);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:900px;margin:auto}h1{margin:0 0 6px;font-size:clamp(24px,5vw,34px)}.sub,.hint{color:var(--muted)}
+.panel{margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:16px;background:rgba(20,28,48,.94)}
+label{display:block;margin:12px 0 6px;font-weight:650}input,select{width:100%;min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0b1222;color:var(--text);font:inherit}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}button{padding:11px 17px;border:0;border-radius:10px;background:var(--accent);color:#081226;font-weight:750;cursor:pointer}button.secondary{background:#293650;color:var(--text)}
+video{display:block;width:100%;max-height:65vh;margin-top:18px;background:#000;border-radius:14px}#status{margin-top:14px;white-space:pre-wrap;overflow-wrap:anywhere;color:#c8d7f4}.hidden{display:none}.hint{margin:7px 0 0;font-size:13px}
+@media(max-width:620px){.grid{grid-template-columns:1fr}.panel{padding:14px}}
+</style>
+</head>
+<body><main>
+<h1>MPD Player</h1><div class="sub">Phát MPEG-DASH bằng Shaka Player</div>
+<section class="panel">
+<label for="mpd">Link MPD</label><input id="mpd" type="url" placeholder="https://example.com/manifest.mpd" autocomplete="url">
+<label for="mode">Chế độ DRM</label>
+<select id="mode"><option value="none">Không DRM</option><option value="widevine">Widevine (cần URL license hợp lệ)</option><option value="clearkey">ClearKey (KID + KEY)</option></select>
+<div id="widevineFields" class="hidden"><label for="license">Widevine license server URL</label><input id="license" type="url" placeholder="https://license.example.com/widevine" autocomplete="url"><p class="hint">Đây là URL máy chủ cấp license, không phải chuỗi key. Máy chủ có thể yêu cầu xác thực hoặc header riêng.</p></div>
+<div id="clearFields" class="hidden"><div class="grid">
+<div><label for="kid">KID (hex, có thể có dấu gạch ngang)</label><input id="kid" placeholder="0123456789abcdef0123456789abcdef" autocapitalize="off" spellcheck="false"></div>
+<div><label for="key">KEY (hex)</label><input id="key" type="password" placeholder="0123456789abcdef0123456789abcdef" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+</div><p class="hint">Chỉ dùng với nội dung bạn có quyền phát và được cấu hình hỗ trợ ClearKey. ClearKey không phải Widevine.</p></div>
+<div class="actions"><button id="play">▶ Phát</button><button id="stop" class="secondary">Dừng</button></div>
+<div id="status" role="status" aria-live="polite">Sẵn sàng. Nhập MPD rồi nhấn Phát.</div>
+</section><video id="video" controls playsinline></video></main>
+<script>
+(async function(){
+const $=id=>document.getElementById(id),video=$('video'),status=$('status');let player=null;
+const setStatus=m=>status.textContent=m;
+function showFields(){$('widevineFields').classList.toggle('hidden',$('mode').value!=='widevine');$('clearFields').classList.toggle('hidden',$('mode').value!=='clearkey')}
+$('mode').addEventListener('change',showFields);showFields();
+if(!window.shaka||!shaka.Player.isBrowserSupported()){setStatus('Trình duyệt này không hỗ trợ Shaka Player hoặc thiếu thành phần cần thiết.');return}
+shaka.polyfill.installAll();player=new shaka.Player();await player.attach(video);
+player.addEventListener('error',event=>{const e=event.detail;setStatus('Lỗi Shaka: '+(e?('mã '+e.code+(e.message?' · '+e.message:'')):'không xác định'))});
+player.addEventListener('loading',()=>setStatus('Đang tải luồng…'));player.addEventListener('streaming',()=>setStatus('Đang phát luồng.'));
+$('play').addEventListener('click',async()=>{
+const mpd=$('mpd').value.trim();if(!mpd){setStatus('Vui lòng nhập link MPD.');return}
+const mode=$('mode').value,config={drm:{servers:{},clearKeys:{}}};
+if(mode==='widevine'){const license=$('license').value.trim();if(!license){setStatus('Nhập URL Widevine license server hợp lệ.');return}config.drm.servers['com.widevine.alpha']=license}
+else if(mode==='clearkey'){const kid=$('kid').value.trim().replace(/-/g,'').toLowerCase(),key=$('key').value.trim().replace(/-/g,'').toLowerCase();if(!/^[0-9a-f]{32}$/.test(kid)||!/^[0-9a-f]{32}$/.test(key)){setStatus('KID và KEY phải là chuỗi hex 32 ký tự (16 byte).');return}config.drm.clearKeys[kid]=key}
+try{await player.unload();player.configure(config);setStatus('Đang tải MPD…');await player.load(mpd);setStatus('Tải thành công. Nhấn nút phát trên video nếu cần.');await video.play().catch(()=>{})}
+catch(e){setStatus('Không phát được: '+(e&&e.message?e.message:String(e))+'\nKiểm tra URL MPD, CORS, định dạng luồng và quyền truy cập license.')}
+});
+$('stop').addEventListener('click',async()=>{try{await player.unload();video.pause();video.removeAttribute('src');video.load();setStatus('Đã dừng.')}catch(e){setStatus('Không thể dừng luồng: '+e.message)}});
+})();
+</script></body></html>
