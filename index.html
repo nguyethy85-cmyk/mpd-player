@@ -23,7 +23,9 @@ video{display:block;width:100%;max-height:65vh;margin-top:18px;background:#000;b
 <label for="mpd">Link MPD</label><input id="mpd" type="url" placeholder="https://example.com/manifest.mpd" autocomplete="url">
 <label for="mode">Chế độ DRM</label>
 <select id="mode"><option value="none">Không DRM</option><option value="widevine">Widevine (cần URL license hợp lệ)</option><option value="clearkey">ClearKey (KID + KEY)</option></select>
-<div id="widevineFields" class="hidden"><label for="license">Widevine license server URL</label><input id="license" type="url" placeholder="https://license.example.com/widevine" autocomplete="url"><p class="hint">Đây là URL máy chủ cấp license, không phải chuỗi key. Máy chủ có thể yêu cầu xác thực hoặc header riêng.</p></div>
+<div id="widevineFields" class="hidden"><label for="license">Widevine license server URL</label><input id="license" type="url" placeholder="https://license.example.com/widevine" autocomplete="url">
+<label for="headers">HTTP Headers (JSON, không bắt buộc)</label><textarea id="headers" rows="4" placeholder='{"Authorization":"Bearer YOUR_TOKEN"}' spellcheck="false" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0b1222;color:var(--text);font:13px ui-monospace,monospace"></textarea>
+<p class="hint">Đây là URL máy chủ cấp license, không phải chuỗi key. Máy chủ có thể yêu cầu xác thực hoặc header riêng. Chỉ dùng thông tin truy cập bạn được phép sử dụng.</p></div>
 <div id="clearFields" class="hidden"><div class="grid">
 <div><label for="kid">KID (hex, có thể có dấu gạch ngang)</label><input id="kid" placeholder="0123456789abcdef0123456789abcdef" autocapitalize="off" spellcheck="false"></div>
 <div><label for="key">KEY (hex)</label><input id="key" type="password" placeholder="0123456789abcdef0123456789abcdef" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
@@ -44,7 +46,12 @@ player.addEventListener('loading',()=>setStatus('Đang tải luồng…'));playe
 $('play').addEventListener('click',async()=>{
 const mpd=$('mpd').value.trim();if(!mpd){setStatus('Vui lòng nhập link MPD.');return}
 const mode=$('mode').value,config={drm:{servers:{},clearKeys:{}}};
-if(mode==='widevine'){const license=$('license').value.trim();if(!license){setStatus('Nhập URL Widevine license server hợp lệ.');return}config.drm.servers['com.widevine.alpha']=license}
+if(mode==='widevine'){
+const license=$('license').value.trim();if(!license){setStatus('Nhập URL Widevine license server hợp lệ.');return}
+let headers={};try{const raw=$('headers').value.trim();headers=raw?JSON.parse(raw):{};if(!headers||Array.isArray(headers)||typeof headers!=='object')throw new Error('Headers phải là JSON object.');for(const v of Object.values(headers)){if(typeof v!=='string')throw new Error('Giá trị header phải là chuỗi.')}}catch(e){setStatus('Headers không hợp lệ: '+e.message);return}
+config.drm.servers['com.widevine.alpha']=license;
+config.drm.advanced={'com.widevine.alpha':{headers}};
+}
 else if(mode==='clearkey'){const kid=$('kid').value.trim().replace(/-/g,'').toLowerCase(),key=$('key').value.trim().replace(/-/g,'').toLowerCase();if(!/^[0-9a-f]{32}$/.test(kid)||!/^[0-9a-f]{32}$/.test(key)){setStatus('KID và KEY phải là chuỗi hex 32 ký tự (16 byte).');return}config.drm.clearKeys[kid]=key}
 try{await player.unload();player.configure(config);setStatus('Đang tải MPD…');await player.load(mpd);setStatus('Tải thành công. Nhấn nút phát trên video nếu cần.');await video.play().catch(()=>{})}
 catch(e){setStatus('Không phát được: '+(e&&e.message?e.message:String(e))+'\nKiểm tra URL MPD, CORS, định dạng luồng và quyền truy cập license.')}
