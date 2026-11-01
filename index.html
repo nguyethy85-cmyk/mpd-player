@@ -24,13 +24,14 @@ video{display:block;width:100%;max-height:65vh;margin-top:18px;background:#000;b
 <label for="mode">Chế độ DRM</label>
 <select id="mode"><option value="none">Không DRM</option><option value="widevine">Widevine (cần URL license hợp lệ)</option><option value="clearkey">ClearKey (KID + KEY)</option></select>
 <div id="widevineFields" class="hidden"><label for="license">Widevine license server URL</label><input id="license" type="url" placeholder="https://license.example.com/widevine" autocomplete="url">
-<label for="headers">HTTP Headers (JSON, không bắt buộc)</label><textarea id="headers" rows="4" placeholder='{"Authorization":"Bearer YOUR_TOKEN"}' spellcheck="false" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0b1222;color:var(--text);font:13px ui-monospace,monospace"></textarea>
-<p class="hint">Đây là URL máy chủ cấp license, không phải chuỗi key. Máy chủ có thể yêu cầu xác thực hoặc header riêng. Chỉ dùng thông tin truy cập bạn được phép sử dụng.</p></div>
+<label for="vtvToken">VTVPrime token (chỉ nhập token mới)</label><input id="vtvToken" type="password" placeholder="Dán token VTVPrime mới vào đây" autocomplete="off" spellcheck="false">
+<label for="headers">HTTP Headers bổ sung (JSON, không bắt buộc)</label><textarea id="headers" rows="4" placeholder='{"Authorization":"Bearer YOUR_TOKEN"}' spellcheck="false" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0b1222;color:var(--text);font:13px ui-monospace,monospace"></textarea>
+<p class="hint">Với VTVPrime, token sẽ được gửi trong HTTP Header tên <code>token</code>. Không dùng token đã chia sẻ trước đó; hãy lấy token mới từ phiên đăng nhập của bạn. Header bổ sung bên dưới dành cho các header khác.</p></div>
 <div id="clearFields" class="hidden"><div class="grid">
 <div><label for="kid">KID (hex, có thể có dấu gạch ngang)</label><input id="kid" placeholder="0123456789abcdef0123456789abcdef" autocapitalize="off" spellcheck="false"></div>
 <div><label for="key">KEY (hex)</label><input id="key" type="password" placeholder="0123456789abcdef0123456789abcdef" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
 </div><p class="hint">Chỉ dùng với nội dung bạn có quyền phát và được cấu hình hỗ trợ ClearKey. ClearKey không phải Widevine.</p></div>
-<div class="actions"><button id="play">▶ Phát</button><button id="stop" class="secondary">Dừng</button></div>
+<div class="actions"><button id="vtvprimePreset" class="secondary" type="button">VTVPrime · VTV6</button><button id="play">▶ Phát</button><button id="stop" class="secondary">Dừng</button></div>
 <div id="status" role="status" aria-live="polite">Sẵn sàng. Nhập MPD rồi nhấn Phát.</div>
 </section><video id="video" controls playsinline></video></main>
 <script>
@@ -39,6 +40,15 @@ const $=id=>document.getElementById(id),video=$('video'),status=$('status');let 
 const setStatus=m=>status.textContent=m;
 function showFields(){$('widevineFields').classList.toggle('hidden',$('mode').value!=='widevine');$('clearFields').classList.toggle('hidden',$('mode').value!=='clearkey')}
 $('mode').addEventListener('change',showFields);showFields();
+$('vtvprimePreset').addEventListener('click',()=>{
+  $('mpd').value='https://livebytatm.vtvprime.vn/live/data8/VTV6/Live_DASHDRM/VTV6.mpd';
+  $('mode').value='widevine';
+  $('license').value='https://vtvcab.ondrm.vn/license-api/v1/drm/licenses/widevine?content_id=dthmlj8j';
+  $('vtvToken').value='';
+  $('headers').value='';
+  showFields();
+  setStatus('Đã điền cấu hình VTVPrime VTV6. Hãy dán token mới do VTVPrime cấp rồi nhấn Phát.');
+});
 if(!window.shaka||!shaka.Player.isBrowserSupported()){setStatus('Trình duyệt này không hỗ trợ Shaka Player hoặc thiếu thành phần cần thiết.');return}
 shaka.polyfill.installAll();player=new shaka.Player();await player.attach(video);
 player.addEventListener('error',event=>{const e=event.detail;setStatus('Lỗi Shaka: '+(e?('mã '+e.code+(e.message?' · '+e.message:'')):'không xác định'))});
@@ -49,6 +59,8 @@ const mode=$('mode').value,config={drm:{servers:{},clearKeys:{}}};
 if(mode==='widevine'){
 const license=$('license').value.trim();if(!license){setStatus('Nhập URL Widevine license server hợp lệ.');return}
 let headers={};try{const raw=$('headers').value.trim();headers=raw?JSON.parse(raw):{};if(!headers||Array.isArray(headers)||typeof headers!=='object')throw new Error('Headers phải là JSON object.');for(const v of Object.values(headers)){if(typeof v!=='string')throw new Error('Giá trị header phải là chuỗi.')}}catch(e){setStatus('Headers không hợp lệ: '+e.message);return}
+const vtvToken=$('vtvToken').value.trim();
+if(vtvToken) headers.token=vtvToken;
 config.drm.servers['com.widevine.alpha']=license;
 config.drm.advanced={'com.widevine.alpha':{headers}};
 }
