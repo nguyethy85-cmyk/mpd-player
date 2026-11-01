@@ -30,11 +30,21 @@ impl Protection {
 }
 
 fn main() -> Result<()> {
-    let path = env::args()
+    let input = env::args()
         .nth(1)
-        .context("Usage: mpd-inspect <manifest.mpd>")?;
-    let xml = fs::read_to_string(&path)
-        .with_context(|| format!("Could not read MPD file: {path}"))?;
+        .context("Usage: mpd-inspect <manifest.mpd | https://.../manifest.mpd>")?;
+
+    let xml = if input.starts_with("https://") || input.starts_with("http://") {
+        eprintln!("Fetching MPD from URL...");
+        ureq::get(&input)
+            .call()
+            .with_context(|| format!("Could not fetch MPD URL: {input}"))?
+            .into_string()
+            .context("Response body was not valid text")?
+    } else {
+        fs::read_to_string(&input)
+            .with_context(|| format!("Could not read MPD file: {input}"))?
+    };
 
     let protections = inspect(&xml)?;
     println!("{}", serde_json::to_string_pretty(&protections)?);
@@ -86,12 +96,10 @@ fn inspect(xml: &str) -> Result<Vec<Protection>> {
             }
             Event::Text(text) if in_pssh => {
                 if let Some(item) = current.as_mut() {
-                    let encoded = text.decode()?.trim().to_owned();
+                    let encoded = text.unescape()?.trim().to_owned();
                     if !encoded.is_empty() {
-                        item.pssh_bytes = STANDARD
-                            .decode(encoded.as_bytes())
-                            .ok()
-                            .map(|bytes| bytes.len());
+                        let decoded = STANDARD.decode(encoded.as_bytes()).ok();
+                        item.pssh_bytes = decoded.as_ref().map(Vec::len);
                         item.pssh_base64 = Some(encoded);
                     }
                 }
