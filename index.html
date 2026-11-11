@@ -24,7 +24,7 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}.gri
 <label for="mpd">Link MPD</label><input id="mpd" type="url" placeholder="https://example.com/manifest.mpd" autocomplete="url">
 <label for="mode">Chế độ DRM</label>
 <select id="mode"><option value="none">Không DRM</option><option value="widevine">Widevine (cần URL license hợp lệ)</option><option value="clearkey">ClearKey (KID + KEY)</option></select>
-<div id="widevineFields" class="hidden"><label for="license">Widevine license server URL</label><input id="license" type="url" placeholder="https://license.example.com/widevine" autocomplete="url">
+<div id="widevineFields" class="hidden"><label for="license">Widevine license server URL</label><input id="license" type="url" value="https://tv.vietanhtv.top/mytv2/key.php" placeholder="https://license.example.com/widevine" autocomplete="url">
 <label for="headers">HTTP Headers bổ sung (JSON, không bắt buộc)</label><textarea id="headers" rows="4" placeholder='{"Authorization":"Bearer YOUR_TOKEN"}' spellcheck="false" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0b1222;color:var(--text);font:13px ui-monospace,monospace"></textarea>
 <p class="hint">Nhập URL License Server và các HTTP Header theo yêu cầu của nhà cung cấp. Chỉ dùng token còn hiệu lực mà bạn được cấp.</p></div>
 <div id="clearFields" class="hidden"><div class="grid">
