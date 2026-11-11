@@ -27,7 +27,7 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}.gri
 <div id="widevineFields" class="hidden"><label for="license">Widevine license server URL</label><input id="license" type="url" value="https://tv.vietanhtv.top/mytv2/key.php" placeholder="https://license.example.com/widevine" autocomplete="url">
 <label for="headers">HTTP Headers bổ sung (JSON, không bắt buộc)</label><textarea id="headers" rows="4" placeholder='{"Authorization":"Bearer YOUR_TOKEN"}' spellcheck="false" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0b1222;color:var(--text);font:13px ui-monospace,monospace"></textarea>
 <p class="hint">Nhập URL License Server và các HTTP Header theo yêu cầu của nhà cung cấp. Chỉ dùng token còn hiệu lực mà bạn được cấp.</p></div>
-<div id="clearFields" class="hidden"><label for="autoKeyUrl">ClearKey AutoKey API URL</label><input id="autoKeyUrl" type="url" value="https://auto.set.dpdns.org/Tools/AutoKey/" placeholder="https://example.com/clearkey/" autocomplete="url"><p class="hint">Shaka sẽ gửi yêu cầu ClearKey đến API khi MPD yêu cầu license. API cần hỗ trợ giao thức ClearKey EME và trả JSON keys.</p></div>
+<div id="clearFields" class="hidden"><label for="clearLicenseUrl">ClearKey EME License Server URL</label><input id="clearLicenseUrl" type="url" placeholder="https://example.com/clearkey-license" autocomplete="url"><p class="hint">Nhập endpoint ClearKey tương thích EME: Shaka gửi license challenge và máy chủ trả license JSON theo chuẩn ClearKey. API AutoKey nhận danh sách KID rồi trả về khóa thô không phải endpoint EME tương thích trực tiếp.</p></div>
 <div class="actions"><button id="play">▶ Phát</button><button id="stop" class="secondary">Dừng</button></div>
 <div id="status" role="status" aria-live="polite">Sẵn sàng. Nhập MPD rồi nhấn Phát.</div>
 </section>
@@ -53,7 +53,7 @@ let headers={};try{const raw=$('headers').value.trim();headers=raw?JSON.parse(ra
 config.drm.servers['com.widevine.alpha']=license;
 config.drm.advanced={'com.widevine.alpha':{headers}};
 }
-else if(mode==='clearkey'){const autoKeyUrl=$('autoKeyUrl').value.trim();if(!autoKeyUrl){setStatus('Nhập URL AutoKey API.');return}try{new URL(autoKeyUrl)}catch(e){setStatus('URL AutoKey API không hợp lệ.');return}config.drm.servers['org.w3.clearkey']=autoKeyUrl}
+else if(mode==='clearkey'){const clearLicenseUrl=$('clearLicenseUrl').value.trim();if(!clearLicenseUrl){setStatus('Nhập URL ClearKey EME License Server.');return}try{new URL(clearLicenseUrl)}catch(e){setStatus('URL ClearKey License Server không hợp lệ.');return}config.drm.servers['org.w3.clearkey']=clearLicenseUrl}
 try{await player.unload();player.configure(config);setStatus('Đang tải MPD…');await player.load(mpd);setStatus('Tải thành công. Nhấn nút phát trên video nếu cần.');await video.play().catch(()=>{})}
 catch(e){setStatus('Không phát được: '+(e&&e.message?e.message:String(e))+'\nKiểm tra URL MPD, CORS, định dạng luồng và quyền truy cập license.')}
 });
