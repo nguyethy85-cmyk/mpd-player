@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MPD Player - Shaka</title>
+<title>MPD Player - Plyr + Shaka</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.13.8/shaka-player.compiled.js"></script>
 <style>
 :root{color-scheme:dark;--bg:#0b1020;--panel:#141c30;--line:#2a3652;--accent:#77a7ff;--text:#edf2ff;--muted:#a8b4cc}
@@ -13,7 +14,7 @@ main{max-width:900px;margin:auto}h1{margin:0 0 6px;font-size:clamp(24px,5vw,34px
 label{display:block;margin:12px 0 6px;font-weight:650}input,select{width:100%;min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0b1222;color:var(--text);font:inherit}
 input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}button{padding:11px 17px;border:0;border-radius:10px;background:var(--accent);color:#081226;font-weight:750;cursor:pointer}button.secondary{background:#293650;color:var(--text)}
-video{display:block;width:100%;max-height:65vh;margin-top:18px;background:#000;border-radius:14px}#status{margin-top:14px;white-space:pre-wrap;overflow-wrap:anywhere;color:#c8d7f4}.hidden{display:none}.hint{margin:7px 0 0;font-size:13px}
+.player-wrap{margin-top:18px;border-radius:14px;overflow:hidden;background:#000}.plyr{--plyr-color-main:#77a7ff;--plyr-video-control-color:#edf2ff;--plyr-video-control-color-hover:#fff;--plyr-video-background:#000;--plyr-menu-background:#141c30;--plyr-menu-color:#edf2ff}.plyr video{display:block;width:100%;max-height:65vh;background:#000}.plyr__control--overlaid{background:#77a7ff;color:#081226}.plyr__control--overlaid:hover{background:#9bbdff}#status{margin-top:14px;white-space:pre-wrap;overflow-wrap:anywhere;color:#c8d7f4}.hidden{display:none}.hint{margin:7px 0 0;font-size:13px}
 @media(max-width:620px){.grid{grid-template-columns:1fr}.panel{padding:14px}}
 </style>
 </head>
@@ -42,15 +43,16 @@ video{display:block;width:100%;max-height:65vh;margin-top:18px;background:#000;b
 <div id="autoStatus" role="status" aria-live="polite">Chưa kiểm tra.</div>
 <pre id="autoResult" style="white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1222;padding:12px;border:1px solid var(--line);border-radius:10px;color:#c8d7f4;min-height:48px">Phản hồi API sẽ hiển thị tại đây.</pre>
 </section>
-<video id="video" controls playsinline></video></main>
+<div class="player-wrap"><video id="video" controls playsinline crossorigin></video></div></main>
+<script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
 <script>
 (async function(){
-const $=id=>document.getElementById(id),video=$('video'),status=$('status');let player=null;
+const $=id=>document.getElementById(id),video=$('video'),status=$('status');let player=null,plyr=null;
 const setStatus=m=>status.textContent=m;
 function showFields(){$('widevineFields').classList.toggle('hidden',$('mode').value!=='widevine');$('clearFields').classList.toggle('hidden',$('mode').value!=='clearkey')}
 $('mode').addEventListener('change',showFields);showFields();
 if(!window.shaka||!shaka.Player.isBrowserSupported()){setStatus('Trình duyệt này không hỗ trợ Shaka Player hoặc thiếu thành phần cần thiết.');return}
-shaka.polyfill.installAll();player=new shaka.Player();await player.attach(video);
+shaka.polyfill.installAll();player=new shaka.Player();await player.attach(video);\nif(window.Plyr){plyr=new Plyr(video,{controls:['play-large','play','progress','current-time','duration','mute','volume','settings','fullscreen'],settings:['speed'],speed:{selected:1,options:[0.5,0.75,1,1.25,1.5,1.75,2]},i18n:{restart:'Phát lại',rewind:'Tua lại {seektime}s',play:'Phát',pause:'Tạm dừng',fastForward:'Tua nhanh {seektime}s',seek:'Tìm kiếm',seekLabel:'{currentTime} trên {duration}',played:'Đã phát',buffered:'Đã tải',currentTime:'Thời gian hiện tại',duration:'Thời lượng',volume:'Âm lượng',mute:'Tắt tiếng',unmute:'Bật tiếng',enableCaptions:'Bật phụ đề',disableCaptions:'Tắt phụ đề',enterFullscreen:'Toàn màn hình',exitFullscreen:'Thoát toàn màn hình',frameTitle:'Khung hình {title}',captions:'Phụ đề',settings:'Cài đặt',speed:'Tốc độ',normal:'Bình thường',quality:'Chất lượng',loop:'Lặp lại'}});}
 player.addEventListener('error',event=>{const e=event.detail;setStatus('Lỗi Shaka: '+(e?('mã '+e.code+(e.message?' · '+e.message:'')):'không xác định'))});
 player.addEventListener('loading',()=>setStatus('Đang tải luồng…'));player.addEventListener('streaming',()=>setStatus('Đang phát luồng.'));
 $('play').addEventListener('click',async()=>{
